@@ -1,0 +1,8 @@
+"0","cv_lm <- train("
+"0","  response_1~.,"
+"0","  data = P2_train_data,"
+"0","  method = ""lm"","
+"0","  preProc = c(""zv"", ""center"", ""scale""),"
+"0","  trControl = trainControl(method = ""cv"", number = 10),"
+"0","  tuneLength = 10"
+"0",")"

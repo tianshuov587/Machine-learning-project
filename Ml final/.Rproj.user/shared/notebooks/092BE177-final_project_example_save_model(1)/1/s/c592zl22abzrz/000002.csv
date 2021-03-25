@@ -1,0 +1,3 @@
+"0","#Resampling:"
+"0","set.seed(345)"
+"0","folds <- vfold_cv(train_data_step1, v = 10)"

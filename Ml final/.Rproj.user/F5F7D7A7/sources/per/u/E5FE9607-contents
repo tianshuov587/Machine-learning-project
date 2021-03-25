@@ -1,0 +1,13 @@
+obj.fun<-c(1, 1, 1, 1, 1)
+constr <- matrix(c(1, 0, 0, 0, 0,
+                   0, 1, 1, 0, 0,
+                   0, 0, 0, 1, 1,
+                   0, 1, 0, 0, 1,
+                   0, 0, 1, 0, 1,
+                   0, 0, 1, 1, 0), ncol=5,
+                 byrow = TRUE)
+constr.dir <-c("<=","<=","<=","<=","<=","<=")
+rhs <-c(30, 60, 40, 60, 70, 60)
+mflow.sol <-lp("max",obj.fun,constr,constr.dir,rhs)
+mflow.sol
+mflow.sol$solution

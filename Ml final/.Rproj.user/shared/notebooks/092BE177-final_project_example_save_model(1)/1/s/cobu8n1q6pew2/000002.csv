@@ -1,0 +1,5 @@
+"0","#Tuning"
+"0","spline_rec <-"
+"0","  recipe(response_1 ~ ., data = train_data_step1) %>%"
+"0","  step_ns(x01, deg_free = tune(""x01"")) %>%"
+"0","  step_ns(x02, deg_free = tune(""x02""))"

@@ -1,0 +1,42 @@
+library(deSolve)
+parameters <- c(mu = 1, lambda = 0.1)
+initial_state <- c(p0=1 , p1 = 0)
+popmodel <- function(t, initial_state, parameters){
+  with(as.list(c(initial_state, parameters)), {
+    #rate of change
+    dp0 <- -mu*p0+lambda*p1
+    dp1 <- mu*p0 - lambda*p1
+    return(list(c(dp0,dp1)))
+  })
+}
+times <- seq(0, 10 , by = .01)
+#mu = 1, lambda = 0.1
+out <- rk4(initial_state, times, popmodel, parameters)
+
+#mu = 1, lambda = 1
+parameters <- c(mu = 1, lambda = 1)
+out2 <- rk4(initial_state, times, popmodel, parameters)
+
+#mu = 0.1, lambda = 1
+parameters <- c(mu = 0.1, lambda = 1)
+out3 <- rk4(initial_state, times, popmodel, parameters)
+
+
+tem<-as.data.frame(out)
+tem<-cbind(tem,as.data.frame(out2))
+tem<-cbind(tem,as.data.frame(out3))
+colnames(tem)<-c("t1","p0_1","p1_1","t2","p0_2","p1_2","t3","p0_3","p1_3")
+
+tem%>%
+  ggplot()+
+  geom_smooth(aes(x = t1, y = p0_1 ,color = "out"))+
+  geom_smooth(aes(x = t1, y = p1_1 ,color = "out"))+
+  geom_smooth(aes(x = t2, y = p0_2 ,color = "out2"))+
+  geom_smooth(aes(x = t2, y = p1_2 ,color = "out2"))+
+  geom_smooth(aes(x = t3, y = p0_3 ,color = "out3" ))+
+  geom_smooth(aes(x = t3, y = p1_3 ,color = "out3"))
+
+
+
+
+

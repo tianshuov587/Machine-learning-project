@@ -1,0 +1,5 @@
+"0","set.seed(456)"
+"0","lm_fit_rs <- "
+"0","  lm_wf %>% "
+"0","  fit_resamples(folds)"
+"0","collect_metrics(lm_fit_rs)"

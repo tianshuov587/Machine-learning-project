@@ -1,0 +1,11 @@
+"0","library(jtools)"
+"2","
+‘ÿ»Î≥Ãº≠∞¸£∫°Æjtools°Ø
+
+"
+"2","The following object is masked from °Æpackage:yardstick°Ø:
+
+    get_weights
+
+"
+"0","plot_coefs(model3, model4, scale = TRUE, omit.coefs = ""Null"")"

@@ -1,0 +1,5 @@
+"0","step_2_b<-step_2_b_df %>%"
+"0","     mutate(outcome = ifelse(step_2_b_df$outcome_2 == ""Fail"",1,0))"
+"0","step_2_b_num <-fastDummies::dummy_cols(step_2_b)"
+"2","Error in loadNamespace(name) : 不存在叫‘fastDummies’这个名字的程辑包
+"

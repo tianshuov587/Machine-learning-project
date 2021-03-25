@@ -1,0 +1,8 @@
+"0","df %>% tibble::rowid_to_column() %>% "
+"0","  tidyr::gather(key = ""key"", value = ""value"", -xA, -xB,-rowid, -outcome_2) %>% "
+"0","  ggplot(mapping = aes(x = value)) +"
+"0","  geom_histogram(mapping = aes(group = key),"
+"0","                 bins = 21) +"
+"0","  facet_wrap(~key, scales = ""free"") +"
+"0","  theme_bw() +"
+"0","  theme(axis.text.y = element_blank())"

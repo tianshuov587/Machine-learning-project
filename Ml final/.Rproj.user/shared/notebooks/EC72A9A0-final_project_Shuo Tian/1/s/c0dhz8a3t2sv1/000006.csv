@@ -1,0 +1,8 @@
+"0","df%>%"
+"0","  tibble::rowid_to_column() %>% "
+"0","  tidyr::gather(key = ""key"", value = ""value"", -xA, -xB,-response_1,-rowid, -outcome_2) %>% "
+"0","  ggplot(mapping = aes(x = key, y = value)) +"
+"0","  geom_boxplot(mapping = aes(fill = response_1 > median(df$response_1),"
+"0","                             color = response_1 > median(df$response_1)))+"
+"0","  labs(x = "" input name""  , y = ""input value"")+"
+"0","  theme_bw()"

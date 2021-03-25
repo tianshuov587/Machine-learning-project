@@ -1,0 +1,4 @@
+"0","df%>%"
+"0","  GGally::ggpairs(columns = names(df[,c(-1,-2,-14,-15)]),"
+"0","                  mapping = aes(color = outcome_2))+"
+"0","  theme_bw()"

@@ -1,0 +1,170 @@
+---
+title: "Untitled"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+
+
+## Load packages
+
+```{r, load_packages}
+library(tidyverse)
+library(caret)
+library(rstan)
+library(rstanarm)
+library(ggplot2)
+library(bayesplot)
+library(psych)
+library(readr)       # for importing data
+library(broom.mixed) # for converting bayesian models to tidy tibbles
+library(kernlab)
+library(parallel)
+library(glmnet)
+library(vip)
+library(plotROC)
+library(rsample)
+library(recipes)
+```
+             
+
+
+##
+
+## Final project data
+
+The code chunk below reads in the data for the final project.  
+
+```{r, read_glimpse_data}
+data_url <- 'https://raw.githubusercontent.com/jyurko/INFSCI_2595_Fall_2020/master/HW/final_project/infsci_2595_final_project_data.csv'
+
+df <- readr::read_csv(data_url, col_names = TRUE)
+```
+
+#P2c_split data
+
+
+
+```{r}
+df_s1<-df%>%
+   select(response_1,x01,x02,x03,x04,x05,x06,xA,xB)
+
+```
+```{r}
+
+# Fix the random numbers by setting the seed 
+# This enables the analysis to be reproducible when random numbers are used 
+set.seed(420)
+# Put 3/4 of the data into the training set 
+data_split <- initial_split(df_s1, prop = 0.8)
+
+# Create data frames for the two sets:
+train_data <- training(data_split)
+test_data  <- testing(data_split)
+
+
+```
+#P2c_use resampling to evaluate model performance
+```{r}
+set.seed(234)
+tourney_folds <- bootstraps(train_data,times = 5)
+tourney_folds
+
+```
+
+#P2c_ build a recipe for data preprocessing
+
+```{r}
+#response_1 are impacted heavily by x01, x02, x03
+tourney_rec <- recipe(response_1 ~ . , data = train_data) %>%
+  step_ns(x01, deg_free = tune("x01"))%>%
+  step_ns(x02, deg_free = tune("x02"))%>%
+  step_ns(x03, deg_free = tune("x03"))
+tourney_rec
+
+
+```
+#P2c_create a model specification for a linear regression model
+```{r}
+lm_spec <- linear_reg() %>% set_engine("lm")
+
+tourney_wf <- workflow() %>%
+  add_recipe(tourney_rec) %>%
+  add_model(lm_spec)
+tourney_wf
+```
+#P2c_decide what values to try for the splines
+```{r}
+#spline_grid <- tibble(x01 =1:3, x02 = 1:3)
+spline_grid <- tibble(x01 = 1:10, x02 = 1:10,x03=1:10)
+spline_grid
+
+```
+#P2c_use tune_grid(), I will fit each of the options in the grid to each of the resamples.
+```{r}
+doParallel::registerDoParallel()
+save_preds <- control_grid(save_pred = TRUE)
+
+spline_rs <-
+  tune_grid(
+    tourney_wf,
+    resamples = tourney_folds,
+    grid = spline_grid,
+    control = save_preds
+  )
+
+spline_rs
+```
+#P2c_check out how the model did.
+```{r}
+collect_metrics(spline_rs)
+
+```
+#P2c_Looks like the model got better and better as we added more degrees of freedom
+```{r}
+collect_metrics(spline_rs) %>%
+  ggplot(aes(x01, mean, color = .metric)) +
+  geom_line(size = 1.5, alpha = 0.5) +
+  geom_point(size = 3) +
+  facet_wrap(~.metric, ncol = 1, scales = "free_y") +
+  labs(x = "degrees of freedom", y = NULL) +
+  theme(legend.position = "none")
+
+
+```
+
+```{r}
+select_by_pct_loss(spline_rs, metric = "rmse", limit = 5, x01)
+select_by_one_std_err(spline_rs, metric = "rmse", x01)
+```
+It seems like c(2,2,2) of the degrees of freedom is a good choise.
+#P2c_update the tuneable workflow
+```{r}
+final_wf <- finalize_workflow(tourney_wf, tibble(x01 = 2, x02 = 2,x03=2))
+tourney_fit <- fit(final_wf, train_data)
+tourney_fit
+```
+
+#P2c_predict on new data
+
+```{r}
+tem<-predict(tourney_fit, new_data = test_data)
+```
+
+```{r}
+test_data%>%
+  ggplot()+
+  geom_point(aes(x = c(1:402), y =response_1, color = "pink"))+
+  geom_smooth(mapping = aes(x = c(1:402), y =response_1, color = "pink"))+
+  geom_point(aes(x = c(1:402), y = tem$.pred, color = "blue"))+
+  geom_smooth(mapping = aes(x = c(1:402), y =tem$.pred, color = "blue"))
+  
+  
+  
+
+```
+
+Note that the `echo = FALSE` parameter was added to the code chunk to prevent printing of the R code that generated the plot.

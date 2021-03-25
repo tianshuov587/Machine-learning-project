@@ -1,0 +1,1331 @@
+---
+title: "INFSCI 2595 Final Project"
+author: "Shuo Tian"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+## Load packages
+
+```{r, load_packages}
+library(tidyverse)
+library(caret)
+```
+
+
+## Final project data
+
+ 
+
+```{r, read_glimpse_data}
+data_url <- 'https://raw.githubusercontent.com/jyurko/INFSCI_2595_Fall_2020/master/HW/final_project/infsci_2595_final_project_data.csv'
+
+df <- readr::read_csv(data_url, col_names = TRUE)
+```
+
+Get a glimpse of the data.  
+
+```{r, check_glimpse}
+df %>% glimpse()
+```
+
+
+
+#P1_: Exploration
+
+#P1_Distribution of the inputs 
+```{r}
+df %>% tibble::rowid_to_column() %>% 
+  tidyr::gather(key = "key", value = "value", -xA, -xB,-rowid, -outcome_2) %>% 
+  ggplot(mapping = aes(x = value)) +
+  geom_histogram(mapping = aes(group = key),
+                 bins = 21) +
+  facet_wrap(~key, scales = "free") +
+  theme_bw() +
+  theme(axis.text.y = element_blank())
+
+
+```
+
+#P1_Consider breaking up the continuous variables based on the discrete xA and xB variables.
+#P1_check if xA(raw material suppliers) influence the inputs
+```{r}
+df %>% 
+  tidyr::gather(key = "key", value = "value", -outcome_2,-xA,-xB) %>% 
+  mutate(input_number = key) %>% 
+  ggplot(mapping = aes(x = value)) +
+  geom_freqpoly(bins = 25,
+                mapping = aes(color = xA,
+                              y = stat(density)),
+                size = 1.) +
+  facet_wrap(~input_number, scales = "free") +
+  scale_color_brewer(palette = "Set1") +
+  theme_bw() +
+  theme(axis.text.y = element_blank())
+
+```
+
+#P1_check if xB(different materials) influence the inputs
+```{r}
+df %>% 
+  tidyr::gather(key = "key", value = "value", -outcome_2,-xA,-xB) %>% 
+  mutate(input_number = key) %>% 
+  ggplot(mapping = aes(x = value)) +
+  geom_freqpoly(bins = 25,
+                mapping = aes(color = xB,
+                              y = stat(density)),
+                size = 1.) +
+  facet_wrap(~input_number, scales = "free") +
+  scale_color_brewer(palette = "Set1") +
+  theme_bw() +
+  theme(axis.text.y = element_blank())
+
+```
+
+
+
+#P1_Summary statistics for columns
+```{r}
+df[,c(-1,-2,-15)]%>%
+  summary()
+
+df[,15]%>%
+  table()
+```
+
+
+#P1_visualize the summary statistics with boxplots ofr each input
+
+```{r}
+df%>%
+  tibble::rowid_to_column() %>% 
+  tidyr::gather(key = "key", value = "value", -xA, -xB,-response_1,-rowid, -outcome_2) %>% 
+  ggplot(mapping = aes(x = key, y = value)) +
+  geom_boxplot()+
+  labs(x = " input name"  , y = "input value")+
+  theme_bw()
+
+
+```
+
+Check if the "binary groups" in the response are in fact associated with different behavior with inputs
+```{r}
+df%>%
+  tibble::rowid_to_column() %>% 
+  tidyr::gather(key = "key", value = "value", -xA, -xB,-response_1,-rowid, -outcome_2) %>% 
+  ggplot(mapping = aes(x = key, y = value)) +
+  geom_boxplot(mapping = aes(fill = response_1 > median(df$response_1),
+                             color = response_1 > median(df$response_1)))+
+  labs(x = " input name"  , y = "input value")+
+  theme_bw()
+
+
+```
+
+
+```{r}
+
+#df%>%
+#  ggplot(mapping = aes(x = x01, y = outcome_2))+
+#  geom_point( mapping = aes(color  = df$outcome_2),
+#              size =4, alpha = 0.5)+
+#  scale_color_viridis_c()+
+#  theme_bw()
+```
+#P1_Visualize the relationships between the inputs
+#Scatter plots between all pairs of inputs
+
+```{r}
+df%>%
+  GGally::ggpairs(columns = names(df[,c(-1,-2,-14,-15)]),
+                  mapping = aes(color = outcome_2))+
+  theme_bw()
+```
+
+
+#P1_Visualize the relationships between response_1 and the Step 1 inputs
+```{r}
+library(psych)
+df_num <- fastDummies::dummy_cols(df)
+df_num%>% dplyr::select(x01:response_1,xA_A1:xB_B4) %>% 
+  cor() %>% 
+  corrplot::corrplot(method="square")
+```
+#P1_Visualize the relationships between outcome_2 and the Step 2 inputs
+```{r}
+step_2_b<-step_2_b_df %>%
+     mutate(outcome = ifelse(step_2_b_df$outcome_2 == "Fail",0,1))
+step_2_b_num <-fastDummies::dummy_cols(step_2_b)
+
+step_2_b_num%>% dplyr::select(response_1:x11,outcome:xB_B4) %>% 
+  cor() %>% 
+  corrplot::corrplot(method="square")
+```
+#P2_Regression model
+
+
+#P2_linear model
+```{r,2a_0}
+mod2_1<-lm(response_1~ x01+x02+x03+x04+x05+x06 ,data = df)
+```
+
+#P2_Just the discrete inputs – additive terms
+```{r,2a_1}
+#Just the discrete inputs.
+mod2_21<-lm(response_1~ xA+xB,data = df)
+                
+```
+#P2_Just the continuous inputs
+```{r,2a_2}
+#Just the continuous inputs.
+mod2_22<-lm(response_1~ x01+x02+x03+x04+x05+x06+x07+x08+x09+x10+x11,data = df)
+                
+```
+#P2_All step 1 inputs
+```{r,2a_3}
+mod2_23<-lm(response_1~ x01+x02+x03+x04+x05+x06+xA+xB,data = df)
+                
+```
+#P2_A basis function of my choice
+```{r}
+mod2_24<-lm(response_1~ x01+x02+x03+x04+x05+x06+x07+x08+x09+x10+x11+xA+xB,data = df)
+                
+```
+#P2_
+```{r}
+tem<-summary(mod2_21)
+tem$r.squared
+tem<-summary(mod2_22)
+tem$r.squared
+tem<-summary(mod2_23)
+tem$r.squared
+tem<-summary(mod2_24)
+tem$r.squared
+                
+```
+The last model is best. I used the R-squared to identify which is best model
+
+
+#P2_Visualize the coefficient summaries for your best two models. How do they
+compare
+```{r}
+tem<-summary(mod2_23)
+tem$coefficients
+tem<-summary(mod2_24)
+tem$coefficients
+                
+```
+
+##Part ii: Regression models – iiB)
+```{r}
+library(rstan)
+library(rstanarm)
+library(ggplot2)
+library(bayesplot)
+                
+```
+
+#P2_split data
+```{r}
+
+set.seed(123)
+P2_df<-df
+# Put 3/4 of the data into the training set 
+P2_data_split <- initial_split(P2_df, prop = 0.8)
+
+# Create data frames for the two sets:
+P2_train_data <- training(P2_data_split)
+P2_test_data  <- testing(P2_data_split)
+
+```
+
+
+#P2B_use rstanarm’s stan_lm() function to fit full Bayesian linear models
+```{r}
+mod2b_1 <- stan_lm(response_1~ x01+x02+x03+x04+x05+x06+xA+xB, data = P2_train_data,
+                 prior = R2(location = 0.5),
+                 seed = 12345)
+
+mod2b_1%>%summary()
+```
+
+
+
+
+```{r}
+mod2b_2 <- stan_lm(response_1~ x01+x02+x03+x04+x05+x06+x07+x08+x09+x10+x11+xA+xB, data = P2_train_data,
+                 prior = R2(location = 0.5),
+                 seed = 12345)
+mod2b_2%>%summary()
+```
+
+
+
+
+
+
+#P2B_Visualize the posterior distributions on the coefficients for your best model
+```{r, viz_post_summary_a_coefs}
+plot(mod2b_1, pars = names(mod2b_1$coefficients)) + 
+  geom_vline(xintercept = 0, color = "grey", linetype = "dashed", size = 1.) +
+  theme_bw()
+
+```
+
+```{r}
+as.data.frame(mod2b_1) %>% tibble::as_tibble() %>% 
+  select(names(mod2b_1$coefficients)) %>% 
+  tibble::rowid_to_column("post_id") %>% 
+  tidyr::gather(key = "key", value = "value", -post_id) %>% 
+  ggplot(mapping = aes(x = value)) +
+  geom_histogram(bins = 55) +
+  facet_wrap(~key, scales = "free") +
+  theme_bw() +
+  theme(axis.text.y = element_blank())
+```
+
+##P2B_For your best model: study the uncertainty in the noise (residual error), 𝜎.
+
+
+
+
+```{r}
+as.data.frame(mod2b_1) %>% tibble::as_tibble() %>% 
+  select(sigma) %>% 
+  pull() %>% 
+  quantile(c(0.05, 0.5, 0.95))
+
+```
+
+```{r}
+as.data.frame(mod2b_1) %>% tibble::as_tibble() %>% 
+  ggplot(mapping = aes(x = sigma)) +
+  geom_histogram(bins = 55) +
+  theme_bw()
+```
+
+
+#P2B_How does the lm() maximum likelihood estimate (MLE) on 𝜎 relate to the posterior uncertainty on 𝜎?
+
+```{r}
+fit_lm_a <- lm(response_1~ x01+x02+x03+x04+x05+x06+xA+xB, data = df)
+fit_lm_a %>% summary()
+
+```
+#"As shown below, the maximum likelihood estimate (MLE) on the noise coincides with the posterior mode. Our prior formulation used a relatively weak prior on the unknowns through the R-squared prior setup."
+```{r}
+as.data.frame(mod2b_1) %>% tibble::as_tibble() %>% 
+  ggplot(mapping = aes(x = sigma)) +
+  geom_histogram(bins = 55) +
+  geom_vline(xintercept = stats::sigma(fit_lm_a),
+             color = "darkorange", linetype = "dashed", size = 1.1) +
+  theme_bw()
+```
+
+
+##Part ii: Regression models – iiC)
+
+
+
+
+```{r}
+library(tidymodels)  # for the parsnip package, along with the rest of tidymodels
+
+# Helper packages
+library(readr)       # for importing data
+library(broom.mixed) # for converting bayesian models to tidy tibbles
+library(kernlab)
+library(parallel)
+```
+
+#P2c_split data
+
+
+
+```{r}
+df_s1<-df%>%
+   select(response_1,x01,x02,x03,x04,x05,x06,xA,xB)
+
+```
+```{r}
+
+# Fix the random numbers by setting the seed 
+# This enables the analysis to be reproducible when random numbers are used 
+set.seed(420)
+# Put 3/4 of the data into the training set 
+data_split <- initial_split(df_s1, prop = 0.8)
+
+# Create data frames for the two sets:
+train_data <- training(data_split)
+test_data  <- testing(data_split)
+
+
+```
+#P2c_use resampling to evaluate model performance
+```{r}
+set.seed(234)
+tourney_folds <- bootstraps(train_data,times = 5)
+tourney_folds
+
+```
+
+#P2c_ build a recipe for data preprocessing
+
+```{r}
+#response_1 are impacted heavily by x01, x02, x03
+tourney_rec <- recipe(response_1 ~ . , data = train_data) %>%
+  step_ns(x01, deg_free = tune("x01"))%>%
+  step_ns(x02, deg_free = tune("x02"))%>%
+  step_ns(x03, deg_free = tune("x03"))
+tourney_rec
+
+
+```
+#P2c_create a model specification for a linear regression model
+```{r}
+lm_spec <- linear_reg() %>% set_engine("lm")
+
+tourney_wf <- workflow() %>%
+  add_recipe(tourney_rec) %>%
+  add_model(lm_spec)
+tourney_wf
+```
+#P2c_decide what values to try for the splines
+```{r}
+#spline_grid <- tibble(x01 =1:3, x02 = 1:3)
+spline_grid <- tibble(x01 = 1:10, x02 = 1:10,x03=1:10)
+spline_grid
+
+```
+#P2c_use tune_grid(), I will fit each of the options in the grid to each of the resamples.
+```{r}
+doParallel::registerDoParallel()
+save_preds <- control_grid(save_pred = TRUE)
+
+spline_rs <-
+  tune_grid(
+    tourney_wf,
+    resamples = tourney_folds,
+    grid = spline_grid,
+    control = save_preds
+  )
+
+spline_rs
+```
+#P2c_check out how the model did.
+```{r}
+collect_metrics(spline_rs)
+
+```
+#P2c_Looks like the model got better and better as we added more degrees of freedom
+```{r}
+collect_metrics(spline_rs) %>%
+  ggplot(aes(x01, mean, color = .metric)) +
+  geom_line(size = 1.5, alpha = 0.5) +
+  geom_point(size = 3) +
+  facet_wrap(~.metric, ncol = 1, scales = "free_y") +
+  labs(x = "degrees of freedom", y = NULL) +
+  theme(legend.position = "none")
+
+
+```
+
+```{r}
+select_by_pct_loss(spline_rs, metric = "rmse", limit = 5, x01)
+select_by_one_std_err(spline_rs, metric = "rmse", x01)
+```
+It seems like c(2,2,2) of the degrees of freedom is a good choise.
+#P2c_update the tuneable workflow
+```{r}
+final_wf <- finalize_workflow(tourney_wf, tibble(x01 = 2, x02 = 2,x03=2))
+tourney_fit <- fit(final_wf, train_data)
+tourney_fit
+```
+
+#P2c_predict on new data
+
+```{r}
+tem<-predict(tourney_fit, new_data = test_data)
+```
+
+```{r}
+test_data%>%
+  ggplot()+
+  geom_point(aes(x = c(1:402), y =response_1, color = "pink"))+
+  geom_smooth(mapping = aes(x = c(1:402), y =response_1, color = "pink"))+
+  geom_point(aes(x = c(1:402), y = tem$.pred, color = "blue"))+
+  geom_smooth(mapping = aes(x = c(1:402), y =tem$.pred, color = "blue"))
+  
+  
+  
+
+```
+
+
+
+
+
+##I give uo using tidymodel and will use caret for the next
+
+#P2_Linear model and Regularized regression with Elastic net 
+```{r}
+
+ctrl <- trainControl(method = "cv", 
+                     summaryFunction = twoClassSummary, 
+                     classProbs = TRUE)
+
+```
+
+#P2_Since glm model needs all predictors to be numeric, so convert xA, xB first.
+```{r}
+library(glmnet)
+
+# Fix the random numbers by setting the seed 
+# This enables the analysis to be reproducible when random numbers are used 
+set.seed(420)
+
+tem_df<- df_s1
+
+tem_df$xA<-substr(tem_df$xA,start = 2,stop=3)
+tem_df$xB<-substr(tem_df$xB,start = 2,stop=3)
+tem_df$xA<-as.numeric(tem_df$xA)
+tem_df$xB<-as.numeric(tem_df$xB)
+# Put 4/5 of the data into the training set 
+P2_data_split <- initial_split(tem_df, prop = 0.8)
+
+# Create data frames for the two sets:
+P2_train_data <- training(P2_data_split)
+P2_test_data  <- testing(P2_data_split)
+
+
+```
+#P2_lm
+
+```{r}
+cv_lm <- train(
+  response_1~.,
+  data = P2_train_data,
+  method = "lm",
+  preProc = c("zv", "center", "scale"),
+  trControl = trainControl(method = "cv", number = 10),
+  tuneLength = 10
+)
+cv_lm$bestTune
+```
+
+```{r}
+pred <- predict(cv_lm, P2_train_data)
+RMSE(pred, P2_train_data$response_1)
+pred <- predict(cv_lm, P2_test_data)
+RMSE(pred, P2_test_data$response_1)
+```
+
+#P2_glm
+
+```{r}
+cv_glmnet <- train(
+  response_1~.,
+  data = P2_train_data,
+  method = "glmnet",
+  preProc = c("zv", "center", "scale"),
+  trControl = trainControl(method = "cv", number = 10),
+  tuneLength = 10
+)
+cv_glmnet$bestTune
+```
+
+
+```{r}
+pred <- predict(cv_glmnet, P2_train_data)
+RMSE(pred, P2_train_data$response_1)
+pred <- predict(cv_glmnet, P2_test_data)
+RMSE(pred, P2_test_data$response_1)
+```
+#P2_glm^2
+```{r}
+cv_glmnet_t2 <- train(
+  response_1~(.)^2,
+  data = P2_train_data,
+  method = "glmnet",
+  preProc = c("zv", "center", "scale"),
+  trControl = trainControl(method = "cv", number = 10),
+  tuneLength = 10
+)
+
+```
+
+```{r}
+cv_glmnet_t2$bestTune
+pred <- predict(cv_glmnet_t2, P2_train_data)
+RMSE(pred, P2_train_data$response_1)
+pred <- predict(cv_glmnet_t2, P2_test_data)
+RMSE(pred, P2_test_data$response_1)
+```
+#P2_glm^3
+```{r}
+cv_glmnet_t3 <- train(
+  response_1~(.)^3,
+  data = P2_train_data,
+  method = "glmnet",
+  preProc = c("zv", "center", "scale"),
+  trControl = trainControl(method = "cv", number = 10),
+  tuneLength = 10
+)
+
+```
+```{r}
+cv_glmnet_t3$bestTune
+pred <- predict(cv_glmnet_t3, P2_train_data)
+RMSE(pred, P2_train_data$response_1)
+pred <- predict(cv_glmnet_t3, P2_test_data)
+RMSE(pred, P2_test_data$response_1)
+```
+#P2_Variable importance for regularized models
+```{r}
+library(vip)
+
+vip(cv_glmnet, num_features = 10, geom = "point")
+vip(cv_glmnet_t2, num_features = 10, geom = "point")
+vip(cv_glmnet_t3, num_features = 10, geom = "point")
+```
+
+
+
+
+#P2_Neural network  tune parameters 
+```{r}
+my.grid <- expand.grid(.decay = c(0,0.1,0.5), .size = c(1,3,5,7,9,11,13))
+```
+
+```{r}
+set.seed(4321)
+fit_nnet_sonar <- train(
+  response_1~ .,
+  data = train_data,
+  method = "nnet",
+  preProc = c("zv", "center", "scale"),
+  trControl = trainControl(method = "cv", number = 10),
+  tuneGrid = my.grid
+)
+
+
+fit_nnet_sonar
+```
+```{r}
+fit_nnet_sonar$bestTune
+pred <- predict(fit_nnet_sonar, train_data)
+RMSE(pred, train_data$response_1)
+pred <- predict(fit_nnet_sonar, test_data)
+RMSE(pred, test_data$response_1)
+```
+
+#P2_Random forest Define the tuned parameter
+```{r}
+my.grid <- expand.grid(.mtry = c(1,2,4,6,8,10) )
+```
+```{r}
+set.seed(4321)
+fit_rf_sonar <- train(
+  response_1~ .,
+  data = train_data,
+  method = "rf",
+  preProc = c("zv", "center", "scale"),
+  trControl = trainControl(method = "cv", number = 10),
+  tuneGrid = my.grid
+)
+
+
+fit_rf_sonar
+```
+```{r}
+fit_rf_sonar$bestTune
+pred <- predict(fit_rf_sonar, train_data)
+RMSE(pred, train_data$response_1)
+pred <- predict(fit_rf_sonar, test_data)
+RMSE(pred, test_data$response_1)
+```
+
+#P2_xgbTree
+
+
+
+```{r}
+tune_grid <- expand.grid(
+  nrounds = seq(from = 200, to = 1000, by = 50),
+  eta = c(0.025, 0.05, 0.1, 0.3),
+  max_depth = c(2, 3, 4, 5, 6),
+  gamma = 0,
+  colsample_bytree = 1,
+  min_child_weight = 1,
+  subsample = 1
+)
+```
+
+```{r}
+set.seed(4321)
+fit_gbm_sonar <- train(
+  response_1~ .,
+  data = train_data,
+  method ="xgbTree",
+  preProc = c("zv", "center", "scale"),
+  trControl = trainControl(method = "cv", number = 10),
+  tuneGrid = tune_grid
+)
+
+
+fit_gbm_sonar
+```
+
+```{r}
+fit_gbm_sonar$bestTune
+pred <- predict(fit_gbm_sonar, train_data)
+RMSE(pred, train_data$response_1)
+pred <- predict(fit_gbm_sonar, test_data)
+RMSE(pred, test_data$response_1)
+```
+#P2_svm
+
+```{r}
+fir_svm <- train(response_1~ .,
+              data = train_data,
+              method = "svmLinear",
+              trControl = trainControl(method = "cv", number = 10),
+              preProcess = c("center","scale"),
+              tuneGrid = expand.grid(C = seq(0, 2, length = 20)))
+```
+
+```{r}
+fir_svm$bestTune
+pred <- predict(fir_svm, train_data)
+RMSE(pred, train_data$response_1)
+pred <- predict(fir_svm, test_data)
+RMSE(pred, test_data$response_1)
+```
+#P2_knn
+```{r}
+
+set.seed(0420)
+fit_knn <- train(response_1~ .,
+                 data = train_data, 
+                 method = "knn",
+                 trControl = trainControl(method = "cv", number = 10),
+                 preProcess = c("center", "scale"),
+                 tuneLength = 10)
+fit_knn
+```
+```{r}
+fit_knn$bestTune
+pred <- predict(fit_knn, train_data)
+RMSE(pred, train_data$response_1)
+pred <- predict(fit_knn, test_data)
+RMSE(pred, test_data$response_1)
+```
+# resampling
+```{r}
+sonar_roc_compare <- resamples(list(GLMNET = cv_glmnet_t3,
+                                    NNET = fit_nnet_sonar,
+                                    RF =fit_rf_sonar ,
+                                    XGB = fit_gbm_sonar,
+                                    SVM = fir_svm,
+                                    KNN = fit_knn))
+
+dotplot(sonar_roc_compare)
+```
+
+XGboost is the best, it has the smallest RMSE
+
+#Part_3: Binary classification Option B
+#split data
+```{r}
+
+set.seed(420)
+df_tem<-df
+df_tem$response_1<-NULL
+# Put 3/4 of the data into the training set 
+P3_data_split <- initial_split(df_tem, prop = 0.8)
+
+# Create data frames for the two sets:
+P3_train_data <- training(P3_data_split)
+P3_test_data  <- testing(P3_data_split)
+
+```
+```{r}
+ctrl_k05_roc <- trainControl(method = "cv", number = 5,
+                             summaryFunction = twoClassSummary,
+                             classProbs = TRUE,
+                             savePredictions = TRUE)
+
+trc <- ctrl_k05_roc
+```
+#Part3_glm
+```{r}
+set.seed(4321)
+P3_fit_glm <- train(outcome_2 ~ ., data = P3_train_data,
+                          method = "glm",
+                          metric = "ROC",
+                          preProcess = c("center", "scale"),
+                          trControl = trc,
+                          trace=FALSE )
+P3_fit_glm
+```
+#Part3_glmnet
+```{r}
+P3_fit_glmnet <- train(
+  outcome_2~.,
+  data = P3_train_data,
+  method = "glmnet",
+  metric = "ROC",
+  preProc = c("center", "scale"),
+  trControl = trc,
+  trace=FALSE
+)
+P3_fit_glmnet
+```
+```{r}
+P3_fit_glmnet_t2 <- train(
+  outcome_2~(.)^2,
+  data = P3_train_data,
+  method = "glmnet",
+  metric = "ROC",
+  preProc = c("center", "scale"),
+  trControl = trc,
+  trace=FALSE
+)
+P3_fit_glmnet_t2
+```
+```{r}
+P3_fit_glmnet_t3 <- train(
+  outcome_2~(.)^3,
+  data = P3_train_data,
+  method = "glmnet",
+  metric = "ROC",
+  preProc = c("center", "scale"),
+  trControl = trc,
+  trace=FALSE
+)
+P3_fit_glmnet_t3
+```
+
+#P3:Variable importance for regularized models
+```{r}
+library(vip)
+
+vip(P3_fit_glmnet, num_features = 10, geom = "point")
+vip(P3_fit_glmnet_t2, num_features = 10, geom = "point")
+vip(P3_fit_glmnet_t3, num_features = 10, geom = "point")
+```
+
+# P3_Neural network
+```{r}
+P3_fit_nnet <- train(
+  outcome_2~.,
+  data = P3_train_data,
+  method = "nnet",
+  metric = "ROC",
+  preProc = c("center", "scale"),
+  trControl = trc,
+  trace=FALSE
+)
+P3_fit_nnet
+```
+# P3_randomforest
+```{r}
+P3_fit_rf <- train(
+  outcome_2~.,
+  data = P3_train_data,
+  method = "rf",
+  metric = "ROC",
+  preProc = c("center", "scale"),
+  trControl = trc,
+  trace=FALSE,
+  importance = TRUE,
+  tuneGrid=expand.grid(.mtry = c(1,2,4,6,8,10,12,14,16) )
+)
+P3_fit_rf
+```
+#P3_XGBoost 
+```{r}
+P3_fit_xgb <- train(
+  outcome_2~.,
+  data = P3_train_data,
+  method = "xgbTree",
+  metric = "ROC",
+  preProc = c("center", "scale"),
+  trControl = trc,
+  trace=FALSE,
+  importance=TRUE
+)
+P3_fit_xgb
+```
+
+#P3_SVM
+```{r}
+P3_fit_svm <- train(
+  outcome_2~.,
+  data = P3_train_data,
+  method = "svmRadial",
+  metric = "ROC",
+  preProc = c("center", "scale"),
+  trControl = trc,
+  trace=FALSE
+)
+P3_fit_svm
+```
+
+#P3_knn
+```{r}
+P3_fit_knn <- train(
+  outcome_2~.,
+  data = P3_train_data,
+  method = "knn",
+  metric = "ROC",
+  preProc = c("center", "scale"),
+  trControl = trc,
+  tuneLength = 10
+)
+P3_fit_knn
+```
+#P3_resampling results
+```{r}
+P3_roc_compare <- resamples(list(GLM = P3_fit_glm ,
+                                 GLMNET = P3_fit_glmnet,
+                                    NNET = P3_fit_nnet,
+                                    RF =P3_fit_rf ,
+                                    XGB = P3_fit_xgb,
+                                 SVM = P3_fit_svm,
+                                 KNN = P3_fit_knn))
+
+dotplot(P3_roc_compare)
+```
+##P3_It extracts the hold-out set predictions associated with the best tuning parmaeter values for 4 of the models you trained, the logistic regression model, the elastic net, the neural network, and the random forest.
+```{r}
+model_pred_results <- P3_fit_rf$pred %>% tibble::as_tibble() %>% 
+  filter(mtry == P3_fit_rf$bestTune$mtry) %>% 
+  select(pred, obs, Fail, Pass, rowIndex, Resample) %>% 
+  mutate(model_name = "RF") %>% 
+  bind_rows(P3_fit_glm$pred %>% tibble::as_tibble() %>% 
+  select(pred, obs, Fail, Pass, rowIndex, Resample) %>% 
+  mutate(model_name = "GLM")) %>% 
+  bind_rows(P3_fit_glmnet$pred %>% tibble::as_tibble() %>% 
+              filter(alpha == P3_fit_glmnet$bestTune$alpha,
+                     lambda == P3_fit_glmnet$bestTune$lambda) %>% 
+              select(pred, obs, Fail, Pass, rowIndex, Resample) %>% 
+              mutate(model_name = "GLMNET")) %>% 
+  bind_rows(P3_fit_nnet$pred %>% tibble::as_tibble() %>% 
+              filter(size == P3_fit_nnet$bestTune$size,
+                     decay == P3_fit_nnet$bestTune$decay) %>% 
+              select(pred, obs, Fail, Pass, rowIndex, Resample) %>% 
+              mutate(model_name = "NNET"))%>%
+  bind_rows(P3_fit_svm$pred %>% tibble::as_tibble() %>% 
+              filter(sigma == P3_fit_svm$bestTune$sigma,
+                     C == P3_fit_svm$bestTune$C) %>% 
+              select(pred, obs, Fail, Pass, rowIndex, Resample) %>% 
+              mutate(model_name = "SVM"))%>%
+  bind_rows(P3_fit_knn$pred %>% tibble::as_tibble() %>% 
+              filter(k == P3_fit_knn$bestTune$k) %>% 
+              select(pred, obs, Fail, Pass, rowIndex, Resample) %>% 
+              mutate(model_name = "knn"))%>%
+  bind_rows(P3_fit_xgb$pred %>% tibble::as_tibble() %>% 
+              filter(nrounds == P3_fit_xgb$bestTune$nrounds,
+                     max_depth == P3_fit_xgb$bestTune$max_depth,
+                     eta == P3_fit_xgb$bestTune$eta,
+                     gamma==P3_fit_xgb$bestTune$gamma,
+                     colsample_bytree==P3_fit_xgb$bestTune$colsample_bytree,
+                    min_child_weight==P3_fit_xgb$bestTune$min_child_weight,
+               subsample==  P3_fit_xgb$bestTune$subsample   ) %>% 
+              select(pred, obs, Fail, Pass, rowIndex, Resample) %>% 
+              mutate(model_name = "XGB"))
+```
+#P3_ROC
+```{r}
+library(plotROC)
+model_pred_results %>% 
+  # specify the plotROC aesthetics correctly
+  ggplot(aes(m = Pass ,d = ifelse(obs == "Pass",
+                                  1,
+                                  0), color = model_name) ) +
+  geom_roc(cutoffs.at = 0.5) +
+  coord_equal() +
+  style_roc()
+```
+RandomForest is best,it covers the largest area. 
+#P4
+#split data
+```{r}
+
+set.seed(123)
+P4_df<-df
+P4_df[,3:8]<-NULL
+# Put 3/4 of the data into the training set 
+P4_data_split <- initial_split(P4_df, prop = 0.8)
+
+# Create data frames for the two sets:
+P4_train_data <- training(P4_data_split)
+P4_test_data  <- testing(P4_data_split)
+
+```
+#Part4_glm
+```{r}
+set.seed(4321)
+P4_fit_glm <- train(outcome_2 ~ ., data = P4_train_data,
+                          method = "glm",
+                          metric = "ROC",
+                          preProcess = c("center", "scale"),
+                          trControl = trc,
+                          trace=FALSE )
+P4_fit_glm
+```
+#Part4_glmnet
+```{r}
+P4_fit_glmnet <- train(
+  outcome_2~.,
+  data = P4_train_data,
+  method = "glmnet",
+  metric = "ROC",
+  preProc = c("center", "scale"),
+  trControl = trc,
+  trace=FALSE
+)
+P4_fit_glmnet
+```
+```{r}
+P4_fit_glmnet_t2 <- train(
+  outcome_2~(.)^2,
+  data = P4_train_data,
+  method = "glmnet",
+  metric = "ROC",
+  preProc = c("center", "scale"),
+  trControl = trc,
+  trace=FALSE
+)
+P4_fit_glmnet_t2
+```
+```{r}
+P4_fit_glmnet_t3 <- train(
+  outcome_2~(.)^3,
+  data = P4_train_data,
+  method = "glmnet",
+  metric = "ROC",
+  preProc = c("center", "scale"),
+  trControl = trc,
+  trace=FALSE
+)
+P4_fit_glmnet_t3
+```
+#P4:Variable importance for regularized models
+```{r}
+library(vip)
+
+vip(P4_fit_glmnet, num_features = 10, geom = "point")
+vip(P4_fit_glmnet_t2, num_features = 10, geom = "point")
+vip(P4_fit_glmnet_t3, num_features = 10, geom = "point")
+```
+# P4_Neural network
+```{r}
+P4_fit_nnet <- train(
+  outcome_2~.,
+  data = P4_train_data,
+  method = "nnet",
+  metric = "ROC",
+  preProc = c("center", "scale"),
+  trControl = trc,
+  trace=FALSE
+)
+P4_fit_nnet
+```
+# P4_randomforest
+```{r}
+P4_fit_rf <- train(
+  outcome_2~.,
+  data = P4_train_data,
+  method = "rf",
+  metric = "ROC",
+  preProc = c("center", "scale"),
+  trControl = trc,
+  trace=FALSE,
+  importance = TRUE,
+  tuneGrid=expand.grid(.mtry = c(1,2,4,6,8,10,12,14,16) )
+)
+P4_fit_rf
+```
+
+#P4_XGBoost 
+```{r}
+P4_fit_xgb <- train(
+  outcome_2~.,
+  data = P4_train_data,
+  method = "xgbTree",
+  metric = "ROC",
+  preProc = c("center", "scale"),
+  trControl = trc,
+  trace=FALSE,
+  importance=TRUE
+)
+P4_fit_xgb
+```
+
+#P4_SVM
+```{r}
+P4_fit_svm <- train(
+  outcome_2~.,
+  data = P4_train_data,
+  method = "svmRadial",
+  metric = "ROC",
+  preProc = c("center", "scale"),
+  trControl = trc,
+  trace=FALSE
+)
+P4_fit_svm
+```
+
+#P4_knn
+```{r}
+P4_fit_knn <- train(
+  outcome_2~.,
+  data = P4_train_data,
+  method = "knn",
+  metric = "ROC",
+  preProc = c("center", "scale"),
+  trControl = trc,
+  tuneLength = 10
+)
+P4_fit_knn
+```
+#P4_resampling results
+```{r}
+P4_roc_compare <- resamples(list(GLM = P4_fit_glm ,
+                                 GLMNET = P4_fit_glmnet,
+                                    NNET = P4_fit_nnet,
+                                    RF =P4_fit_rf ,
+                                    XGB = P4_fit_xgb,
+                                 SVM = P4_fit_svm,
+                                 KNN = P4_fit_knn))
+
+dotplot(P4_roc_compare)
+```
+##P4_It extracts the hold-out set predictions associated with the best tuning parmaeter values for 4 of the models you trained, the logistic regression model, the elastic net, the neural network, and the random forest.
+```{r}
+model_pred_results <- 
+  P4_fit_rf$pred %>% tibble::as_tibble() %>% 
+  filter(mtry == P4_fit_rf$bestTune$mtry) %>% 
+  select(pred, obs, Fail, Pass, rowIndex, Resample) %>% 
+  mutate(model_name = "RF") %>% 
+  bind_rows(P4_fit_glm$pred %>% tibble::as_tibble() %>% 
+  select(pred, obs, Fail, Pass, rowIndex, Resample) %>% 
+  mutate(model_name = "GLM")) %>% 
+  bind_rows(P4_fit_glmnet$pred %>% tibble::as_tibble() %>% 
+              filter(alpha == P4_fit_glmnet$bestTune$alpha,
+                     lambda == P4_fit_glmnet$bestTune$lambda) %>% 
+              select(pred, obs, Fail, Pass, rowIndex, Resample) %>% 
+              mutate(model_name = "GLMNET")) %>% 
+  bind_rows(P4_fit_nnet$pred %>% tibble::as_tibble() %>% 
+              filter(size == P4_fit_nnet$bestTune$size,
+                     decay == P4_fit_nnet$bestTune$decay) %>% 
+              select(pred, obs, Fail, Pass, rowIndex, Resample) %>% 
+              mutate(model_name = "NNET"))%>%
+  bind_rows(P4_fit_svm$pred %>% tibble::as_tibble() %>% 
+              filter(sigma == P4_fit_svm$bestTune$sigma,
+                     C == P4_fit_svm$bestTune$C) %>% 
+              select(pred, obs, Fail, Pass, rowIndex, Resample) %>% 
+              mutate(model_name = "SVM"))%>%
+  bind_rows(P4_fit_knn$pred %>% tibble::as_tibble() %>% 
+              filter(k == P4_fit_knn$bestTune$k) %>% 
+              select(pred, obs, Fail, Pass, rowIndex, Resample) %>% 
+              mutate(model_name = "knn"))%>%
+  bind_rows(P4_fit_xgb$pred %>% tibble::as_tibble() %>% 
+              filter(nrounds == P4_fit_xgb$bestTune$nrounds,
+                     max_depth == P4_fit_xgb$bestTune$max_depth,
+                     eta == P4_fit_xgb$bestTune$eta,
+                     gamma==P4_fit_xgb$bestTune$gamma,
+                     colsample_bytree==P4_fit_xgb$bestTune$colsample_bytree,
+                    min_child_weight==P4_fit_xgb$bestTune$min_child_weight,
+               subsample==  P4_fit_xgb$bestTune$subsample   ) %>% 
+              select(pred, obs, Fail, Pass, rowIndex, Resample) %>% 
+              mutate(model_name = "XGB"))
+```
+
+
+#P4_ROC
+```{r}
+library(plotROC)
+model_pred_results %>% 
+  # specify the plotROC aesthetics correctly
+  ggplot(aes(m = Pass ,d = ifelse(obs == "Pass",
+                                  1,
+                                  0), color = model_name) ) +
+  geom_roc(cutoffs.at = 0.5) +
+  coord_equal() +
+  style_roc()
+```
+Randomforest is the best model in this data
+
+
+
+
+```{r}
+res_rf<-predict(P4_fit_rf, newdata = P4_test_data)
+res<-data.frame(as.factor(P4_test_data$outcome_2),as.factor(res_rf))
+colnames(res)<-c("truth","pre")
+
+confusionMatrix(data = res$pre, reference = res$truth)
+```
+
+#Part 5: Interpretation and “optimization”
+
+#Does including the response_1 variable as a feature yield to better performance in predicting outcome_2?
+
+```{r}
+```
+
+#Identify the most important variables associated with your best performing models.
+
+```{r}
+rfimp<- varImp(P4_fit_rf,scale = FALSE)
+plot(rfimp)
+```
+
+#Visualize the probability of failure as a function of your identified most important variables.
+
+
+```{r}
+make_input_grid <- function(var_name, top_input_names, all_data)
+{
+  
+  xvar <- all_data %>% select(var_name) %>% pull()
+  
+  if (var_name %in% top_input_names[1:2]){
+    xgrid <- seq(min(xvar), max(xvar), length.out = 20)
+  } 
+  else {
+    
+    xgrid <- median(xvar, na.rm = TRUE)
+  }
+  
+  return(xgrid)
+}
+```
+```{r}
+tem_tem<-P4_df[,-9]
+all_input_names <- tem_tem%>% names()
+#head(df)
+rf_imp <- c("x07", "x08")
+grid_rf_lst <- purrr::map(all_input_names,
+                              make_input_grid,
+                              top_input_names = rf_imp,
+                              all_data = tem_tem)
+```
+```{r}
+grid_rf <- expand.grid(grid_rf_lst, 
+                               KEEP.OUT.ATTRS = FALSE,
+                               stringsAsFactors = FALSE) %>% 
+  purrr::set_names(all_input_names)
+```
+```{r}
+P5_pred__rf <- predict(P4_fit_rf, newdata = test_input_grid_rf_b_roc, type = "prob")
+grid_rf %>% 
+  bind_cols(P5_pred__rf ) %>%
+  ggplot(mapping = aes(x = x07, y = x08)) +
+  geom_raster(mapping = aes(fill = Fail)) +
+  scale_fill_viridis_b() +
+  theme_bw() +
+  theme(legend.position = "right")
+```
+There are two area that the probability of Fail is low.
+They are x07=142.5 to 145 && x08 = 77 to 80 
+and  x07 = 146 to 149 && x08 = 81 to 83
+
+#Do the optimal input settings vary across A
+```{r}
+make_input_grid_A <- function(var_name, top_input_names, all_data)
+{
+  
+  xvar <- all_data %>% select(var_name) %>% pull()
+  
+  if (var_name %in% top_input_names[1:2]){
+    xgrid <- seq(min(xvar), max(xvar), length.out = 20)
+  } 
+  else if (var_name %in% c("xA") ){
+    xgrid <- xvar
+  }
+  else {
+    
+    xgrid <- median(xvar, na.rm = TRUE)
+  }
+  
+  return(xgrid)
+}
+
+```
+```{r}
+grid_rf_lst_A <- purrr::map(all_input_names,
+                              make_input_grid_A,
+                              top_input_names = rf_imp,
+                              all_data = tem_tem)
+grid_rf_A <- expand.grid(grid_rf_lst_A, 
+                               KEEP.OUT.ATTRS = FALSE,
+                               stringsAsFactors = FALSE) %>% 
+  purrr::set_names(all_input_names)
+
+```
+```{r}
+P5_pred__rf <- predict(P4_fit_rf, newdata = grid_rf_A, type = "prob")
+grid_rf_A %>%
+  bind_cols(P5_pred__rf) %>%
+  ggplot(mapping = aes(x = x07, y = x08)) +
+  geom_raster(mapping = aes(fill = Fail)) +
+  facet_grid(xA~xB, labeller = "label_both")+
+  scale_fill_viridis_b() +
+  theme_bw() +
+  theme(legend.position = "bottom")
+```
+
+#Do the optimal input settings vary across B
+```{r}
+make_input_grid_B <- function(var_name, top_input_names, all_data)
+{
+  
+  xvar <- all_data %>% select(var_name) %>% pull()
+  
+  if (var_name %in% top_input_names[1:2]){
+    xgrid <- seq(min(xvar), max(xvar), length.out = 20)
+  } 
+  else if (var_name %in% c("xB") ){
+    xgrid <- xvar
+  }
+  else {
+    
+    xgrid <- median(xvar, na.rm = TRUE)
+  }
+  
+  return(xgrid)
+}
+
+```
+```{r}
+grid_rf_lst_B <- purrr::map(all_input_names,
+                              make_input_grid_B,
+                              top_input_names = rf_imp,
+                              all_data = tem_tem)
+grid_rf_B <- expand.grid(grid_rf_lst_B, 
+                               KEEP.OUT.ATTRS = FALSE,
+                               stringsAsFactors = FALSE) %>% 
+  purrr::set_names(all_input_names)
+
+```
+```{r}
+P5_pred__rf <- predict(P4_fit_rf, newdata = grid_rf_B, type = "prob")
+grid_rf_B %>%
+  bind_cols(P5_pred__rf) %>%
+  ggplot(mapping = aes(x = x07, y = x08)) +
+  geom_raster(mapping = aes(fill = Fail)) +
+  facet_grid(xA~xB, labeller = "label_both")+
+  scale_fill_viridis_b() +
+  theme_bw() +
+  theme(legend.position = "bottom")
+
+```
+From above we know that xA do not have a big influence on the result, however when xb is equal to B3 or B4, the average probability of Fail will improve, some "Pass" area disappear. And we also know when x07=142.5 to 145 && x08 = 77 to 80 
+or  x07 = 146 to 149 && x08 = 81 to 83, the probability of Fail is pretty low.

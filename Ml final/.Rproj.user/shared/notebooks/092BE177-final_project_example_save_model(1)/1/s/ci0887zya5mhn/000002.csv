@@ -1,0 +1,3 @@
+"0","step1_train_predicts <- lm_pred_train %>%"
+"0","  mutate(response = train_data_step1$response_1)"
+"0","metrics(step1_train_predicts, truth = response, estimate = .pred)"

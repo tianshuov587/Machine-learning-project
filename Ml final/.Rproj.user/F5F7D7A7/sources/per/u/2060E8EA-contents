@@ -1,0 +1,44 @@
+Atl = c(0, 0, 7, 0, 8, 0, 8.5, 0)
+Bos = c(0, 0, 9.8, 0, 0, 0, 2, 0)
+Chi = c(7, 9.8, 0, 10, 9.7, 0, 8, 0)
+Den = c(14, 0, 10, 0, 8, 10, 0, 12)
+Dal = c(8, 0, 9.7, 8, 0, 14, 0, 17)
+LA = c(0, 0, 0, 10, 14, 0, 0, 4)
+NY = c(8.5, 2, 8, 0, 0, 0, 0, 0)
+SF = c(0, 0, 0, 12, 17, 4, 0, 0)
+MA = rbind(Atl,Bos,Chi,Den,Dal,LA,NY,SF)
+ga<-graph_from_adjacency_matrix(MA)
+plot(ga)
+gau<-as.undirected(ga)
+plot(gau)
+
+gau
+
+E(gau)$weight<-c(7,9.8,14,10,8,9.7,8,10,14,8.5,2,8,12,17,4)
+
+T2 = mst(gau) # MST defaults to Prim algorithm
+T2
+plot(T2)
+
+distances(gau)
+
+tem <- data.frame("x"=0,"y"=0)
+tem<-cbind(tem,c(1:12))
+tem<-cbind(tem,c(12,10,14,16,18,21,33,28,35,40,39,41))
+tem<-tem[,c(3,4)]
+colnames(tem)<-c("x","y")
+q2<-lm(y~x,data = tem)
+print(q2)
+residuals(q2)
+summary(q2)
+tem%>%
+  ggplot(aes(x = x, y = y))+
+  geom_point()+
+  geom_smooth(method=lm, level=0.9)
+
+
+pre<-predict(q2,interval = 'confidence', level = 0.9)
+
+
+pre
+

@@ -1,0 +1,8 @@
+"0","library(tidymodels)"
+"0","set.seed(1989)"
+"0","# Put 3/4 of the data into the training set "
+"0","data_split_step1 <- initial_split(step_1_df, prop = 0.8)"
+"0",""
+"0","# Create data frames for the two sets:"
+"0","train_data_step1 <- training(data_split_step1)"
+"0","test_data_step1 <- testing(data_split_step1)"

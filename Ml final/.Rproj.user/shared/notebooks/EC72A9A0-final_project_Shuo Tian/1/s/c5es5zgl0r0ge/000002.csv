@@ -1,0 +1,7 @@
+"0",""
+"0","#df%>%"
+"0","#  ggplot(mapping = aes(x = x01, y = outcome_2))+"
+"0","#  geom_point( mapping = aes(color  = df$outcome_2),"
+"0","#              size =4, alpha = 0.5)+"
+"0","#  scale_color_viridis_c()+"
+"0","#  theme_bw()"

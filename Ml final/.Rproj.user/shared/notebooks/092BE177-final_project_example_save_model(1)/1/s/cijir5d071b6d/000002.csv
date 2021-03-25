@@ -1,0 +1,2 @@
+"0","spline_res <-"
+"0","  tune_grid(lm_mod, spline_rec, resamples = folds, grid = spline_grid)"

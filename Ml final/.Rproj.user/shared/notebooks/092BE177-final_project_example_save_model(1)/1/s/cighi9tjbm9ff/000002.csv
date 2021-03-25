@@ -1,0 +1,4 @@
+"0","lm_wf <- "
+"0","  workflow() %>%"
+"0","  add_model(lm_mod) %>%"
+"0","  add_formula(response_1 ~ x01+x02+x03+x04+x05+x06+xA+xB)"

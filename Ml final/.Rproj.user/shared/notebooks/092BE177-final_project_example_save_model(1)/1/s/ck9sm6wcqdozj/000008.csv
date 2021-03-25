@@ -1,0 +1,4 @@
+"0","library(psych)"
+"0","df_num <- fastDummies::dummy_cols(df)"
+"2","Error in loadNamespace(name) : 不存在叫‘fastDummies’这个名字的程辑包
+"

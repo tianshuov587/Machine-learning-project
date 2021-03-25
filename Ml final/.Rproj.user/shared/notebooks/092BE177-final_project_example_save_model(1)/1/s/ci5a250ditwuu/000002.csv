@@ -1,0 +1,4 @@
+"0","#Linear additive model(method=‘lm’)"
+"0","lm_mod <- "
+"0","  linear_reg() %>% "
+"0","  set_engine(""lm"")"

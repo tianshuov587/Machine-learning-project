@@ -1,0 +1,2 @@
+"0","step_2_a_df <- df %>% select(xA, xB, x01:x11, outcome_2) %>% "
+"0","  mutate(outcome_2 = factor(outcome_2, levels = c(""Fail"", ""Pass"")))"

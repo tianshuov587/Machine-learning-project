@@ -1,0 +1,36 @@
+"0","library(psych)
+"
+"2","程辑包‘psych’是用R版本4.0.3 来建造的"
+"2","
+载入程辑包：‘psych’
+
+"
+"2","The following object is masked from ‘package:kernlab’:
+
+    alpha
+
+"
+"2","The following objects are masked from ‘package:scales’:
+
+    alpha, rescale
+
+"
+"2","The following object is masked from ‘package:rstanarm’:
+
+    logit
+
+"
+"2","The following object is masked from ‘package:rstan’:
+
+    lookup
+
+"
+"2","The following objects are masked from ‘package:ggplot2’:
+
+    %+%, alpha
+
+"
+"0","df_num <- fastDummies::dummy_cols(df)"
+"0","df_num%>% dplyr::select(x01:response_1,xA_A1:xB_B4) %>% "
+"0","  cor() %>% "
+"0","  corrplot::corrplot(method=""square"")"

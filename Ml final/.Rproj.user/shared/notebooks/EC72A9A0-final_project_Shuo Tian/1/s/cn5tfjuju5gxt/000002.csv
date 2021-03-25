@@ -1,0 +1,2 @@
+"0","rfimp<- varImp(P4_fit_rf,scale = FALSE)"
+"0","plot(rfimp)"

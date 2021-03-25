@@ -1,0 +1,5 @@
+"0","df_num %>% dplyr::select(x01:x11,xA_A1:xB_B4) %>% "
+"0","  cor() %>% "
+"0","  corrplot::corrplot(method=""square"")"
+"2","Error in eval(lhs, parent, parent) : 找不到对象'df_num'
+"
